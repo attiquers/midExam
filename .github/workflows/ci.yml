@@ -39,11 +39,14 @@ jobs:
       - name: Copy .env
         run: cp .env.example .env
       
+      # --- START: THIS STEP IS NOW CORRECTED ---
       - name: Set Sail DB Variables
         run: |
+          sed -i 's/DB_HOST=127.0.0.1/DB_HOST=mysql/' .env
           sed -i 's/DB_DATABASE=laravel/DB_DATABASE=TodoApp/' .env
           sed -i 's/DB_USERNAME=root/DB_USERNAME=sail/' .env
           sed -i 's/DB_PASSWORD=/DB_PASSWORD=password/' .env
+      # --- END: THIS STEP IS NOW CORRECTED ---
 
       - name: Install dependencies
         run: docker run --rm -v $(pwd):/app -w /app laravelsail/php82-composer composer install
@@ -73,29 +76,12 @@ jobs:
 
       - name: Clear Config Cache
         run: ./vendor/bin/sail artisan config:clear
-      
-      # --- START: NEW DIAGNOSTIC STEPS ---
-      - name: Check .env file inside container
-        run: |
-          echo "Verifying .env file contents in laravel.test container:"
-          ./vendor/bin/sail exec laravel.test cat .env | grep DB_
-
-      - name: Check Laravel's loaded config
-        run: |
-          echo "Verifying Laravel's loaded database config:"
-          ./vendor/bin/sail artisan tinker --execute="print_r(config('database.connections.mysql'))"
-      # --- END: NEW DIAGNOSTIC STEPS ---
 
       - name: Run Migrations
         run: ./vendor/bin/sail artisan migrate
 
-      - name: Show MySQL Logs After Failure
-        if: always()
-        run: ./vendor/bin/sail logs mysql
-
       - name: Run Tests
         run: ./vendor/bin/sail artisan test
-
 
   # Job 3: Build and Push Image to Docker Hub
   build-and-push:
