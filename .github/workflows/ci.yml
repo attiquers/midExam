@@ -51,13 +51,14 @@ jobs:
       - name: Start Sail
         run: ./vendor/bin/sail up -d
 
+      # --- START: THIS IS THE CORRECTED STEP ---
       - name: Wait for MySQL
-        env:
-          DB_PASSWORD: password # Set the password for this step's environment
         run: |
           echo "Waiting for MySQL to be ready..."
           for i in {1..30}; do
-            if ./vendor/bin/sail exec mysql mysqladmin ping -usail -p$DB_PASSWORD --silent; then
+            # Run 'nc' (netcat) from the 'laravel.test' container
+            # to check if the 'mysql' host's port '3306' is open
+            if ./vendor/bin/sail exec laravel.test nc -z mysql 3306; then
               echo "MySQL is ready!"
               break
             fi
@@ -68,6 +69,7 @@ jobs:
             echo "MySQL did not become ready after 60 seconds."
             exit 1
           fi
+      # --- END: THIS IS THE CORRECTED STEP ---
 
       - name: Generate App Key
         run: ./vendor/bin/sail artisan key:generate
@@ -80,7 +82,7 @@ jobs:
 
       - name: Run Tests
         run: ./vendor/bin/sail artisan test
-
+        
   # Job 3: Build and Push Image to Docker Hub
   build-and-push:
     name: "Build and Push to Docker Hub"
