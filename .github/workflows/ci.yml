@@ -114,8 +114,9 @@ jobs:
           # --- START: CORRECTED LINES ---
           # Set the context to the directory containing the Dockerfile and source files
           context: ./docker/8.2
-          # 'file' is relative to the repository root, so specify the full path
+          # 'file' is relative to the repository root, so specify the full path here
           file: ./docker/8.2/Dockerfile 
           # --- END: CORRECTED LINES ---
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/todoapp:latest # Change 'todoapp' as needed
+
