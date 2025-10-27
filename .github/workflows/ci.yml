@@ -26,7 +26,7 @@ jobs:
       - name: "Pint check placeholder"
         run: echo "Skipping Pint, not installed. Add 'laravel/pint' to run."
 
-  # Job 2: Run Tests
+# Job 2: Run Tests
   test:
     name: "Run Artisan Tests"
     runs-on: ubuntu-latest
@@ -39,13 +39,11 @@ jobs:
       - name: Copy .env
         run: cp .env.example .env
       
-      # --- START: ADD THIS NEW STEP ---
       - name: Set Sail DB Variables
         run: |
           sed -i 's/DB_DATABASE=laravel/DB_DATABASE=TodoApp/' .env
           sed -i 's/DB_USERNAME=root/DB_USERNAME=sail/' .env
           sed -i 's/DB_PASSWORD=/DB_PASSWORD=password/' .env
-      # --- END: ADD THIS NEW STEP ---
 
       - name: Install dependencies
         run: docker run --rm -v $(pwd):/app -w /app laravelsail/php82-composer composer install
@@ -54,12 +52,26 @@ jobs:
         run: ./vendor/bin/sail up -d
 
       - name: Wait for MySQL
-        run: sleep 20 
+        env:
+          DB_PASSWORD: password # Set the password for this step's environment
+        run: |
+          echo "Waiting for MySQL to be ready..."
+          for i in {1..30}; do
+            if ./vendor/bin/sail mysqladmin ping --host=mysql --password=$DB_PASSWORD --silent; then
+              echo "MySQL is ready!"
+              break
+            fi
+            echo "Waiting for MySQL... (Attempt $i/30)"
+            sleep 2
+          done
+          if [ $i -eq 30 ]; then
+            echo "MySQL did not become ready after 60 seconds."
+            exit 1
+          fi
 
       - name: Generate App Key
         run: ./vendor/bin/sail artisan key:generate
 
-      # --- ADD THIS STEP FOR SAFETY ---
       - name: Clear Config Cache
         run: ./vendor/bin/sail artisan config:clear
 
@@ -68,7 +80,6 @@ jobs:
 
       - name: Run Tests
         run: ./vendor/bin/sail artisan test
-
 
   # Job 3: Build and Push Image to Docker Hub
   build-and-push:
