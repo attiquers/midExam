@@ -81,7 +81,6 @@ jobs:
       - name: Run Tests
         run: ./vendor/bin/sail artisan test
 
-
   # Job 3: Build and Push Image to Docker Hub
   build-and-push:
     name: "Build and Push to Docker Hub"
