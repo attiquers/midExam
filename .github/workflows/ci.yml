@@ -51,45 +51,43 @@ jobs:
       - name: Start Sail
         run: ./vendor/bin/sail up -d
 
+      # --- START: NEW, ROBUST HEALTH CHECK ---
       - name: Wait for MySQL
         run: |
-          echo "Waiting for MySQL to be ready..."
-          for i in {1..30}; do
-            if ./vendor/bin/sail exec laravel.test php -r "try { new PDO('mysql:host=mysql;port=3306', 'sail', 'password'); } catch (Exception \$e) { exit(1); }"; then
-              echo "MySQL is ready! (PDO connection successful)"
+          echo "Waiting for MySQL to be healthy..."
+          for i in {1..60}; do
+            # Check the 'sail ps' output for the 'mysql' service
+            # We grep for 'mysql' and then check if the line contains '(healthy)'
+            if ./vendor/bin/sail ps | grep 'mysql' | grep -q '(healthy)'; then
+              echo "MySQL is healthy!"
               break
             fi
+            
             echo "Waiting for MySQL... (Attempt $i/30)"
+            # Print the current status for debugging
+            ./vendor/bin/sail ps
             sleep 2
           done
+          
           if [ $i -eq 30 ]; then
-            echo "MySQL did not become ready after 60 seconds."
+            echo "MySQL did not become healthy after 60 seconds."
+            ./vendor/bin/sail logs mysql # Dump logs on final failure
             exit 1
           fi
+      # --- END: NEW, ROBUST HEALTH CHECK ---
 
       - name: Generate App Key
         run: ./vendor/bin/sail artisan key:generate
 
       - name: Clear Config Cache
         run: ./vendor/bin/sail artisan config:clear
-      
-      # --- START: ADD NEW DIAGNOSTIC STEP ---
-      - name: Check Container Status Before Migrate
-        run: ./vendor/bin/sail ps
-      # --- END: ADD NEW DIAGNOSTIC STEP ---
 
       - name: Run Migrations
         run: ./vendor/bin/sail artisan migrate
 
-      # --- START: ADD FINAL LOG DUMP (RUNS ON FAILURE) ---
-      - name: Show MySQL Logs After Failure
-        # This step will run even if 'Run Migrations' fails
-        if: always()
-        run: ./vendor/bin/sail logs mysql
-      # --- END: ADD FINAL LOG DUMP ---
-
       - name: Run Tests
         run: ./vendor/bin/sail artisan test
+
 
   # Job 3: Build and Push Image to Docker Hub
   build-and-push:
