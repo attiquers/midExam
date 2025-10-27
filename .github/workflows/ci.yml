@@ -107,16 +107,14 @@ jobs:
       - name: List Build Context Contents
         run: ls -la ./docker/8.2
       # --- End Optional Logging ---
-
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          # --- START: CORRECTED LINES ---
-          # Set the context to the directory containing the Dockerfile and source files
           context: ./docker/8.2
-          # 'file' is relative to the repository root, so specify the full path here
-          file: ./docker/8.2/Dockerfile 
-          # --- END: CORRECTED LINES ---
+          file: ./docker/8.2/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/todoapp:latest # Change 'todoapp' as needed
-
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/todoapp:latest
+          build-args: |
+            WWWGROUP=1000
+            NODE_VERSION=22
+            POSTGRES_VERSION=17
