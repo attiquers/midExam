@@ -99,13 +99,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }} 
           password: ${{ secrets.DOCKERHUB_TOKEN }}      
 
-      # Optional: Keep logging steps for debugging if needed
+      # Optional logging steps
       - name: Show Current Directory
         run: pwd
-
       - name: List Root Directory Contents
         run: ls -la .
-
       - name: List Build Context Contents
         run: ls -la ./docker/8.2
       # --- End Optional Logging ---
@@ -114,11 +112,10 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           # --- START: CORRECTED LINES ---
-          # Set the context to the repository root
-          context: .
-          # Provide the full path to the Dockerfile from the root
+          # Set the context to the directory containing the Dockerfile and source files
+          context: ./docker/8.2
+          # 'file' is relative to the repository root, so specify the full path
           file: ./docker/8.2/Dockerfile 
           # --- END: CORRECTED LINES ---
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/todoapp:latest # Change 'todoapp' as needed
-
