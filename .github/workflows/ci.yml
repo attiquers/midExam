@@ -51,39 +51,47 @@ jobs:
       - name: Start Sail
         run: ./vendor/bin/sail up -d
 
-      # --- START: NEW, ROBUST HEALTH CHECK ---
       - name: Wait for MySQL
         run: |
           echo "Waiting for MySQL to be healthy..."
-          for i in {1..60}; do
-            # Check the 'sail ps' output for the 'mysql' service
-            # We grep for 'mysql' and then check if the line contains '(healthy)'
+          for i in {1..30}; do
             if ./vendor/bin/sail ps | grep 'mysql' | grep -q '(healthy)'; then
               echo "MySQL is healthy!"
               break
             fi
-            
             echo "Waiting for MySQL... (Attempt $i/30)"
-            # Print the current status for debugging
-            ./vendor/bin/sail ps
             sleep 2
           done
-          
           if [ $i -eq 30 ]; then
             echo "MySQL did not become healthy after 60 seconds."
-            ./vendor/bin/sail logs mysql # Dump logs on final failure
+            ./vendor/bin/sail logs mysql
             exit 1
           fi
-      # --- END: NEW, ROBUST HEALTH CHECK ---
 
       - name: Generate App Key
         run: ./vendor/bin/sail artisan key:generate
 
       - name: Clear Config Cache
         run: ./vendor/bin/sail artisan config:clear
+      
+      # --- START: NEW DIAGNOSTIC STEPS ---
+      - name: Check .env file inside container
+        run: |
+          echo "Verifying .env file contents in laravel.test container:"
+          ./vendor/bin/sail exec laravel.test cat .env | grep DB_
+
+      - name: Check Laravel's loaded config
+        run: |
+          echo "Verifying Laravel's loaded database config:"
+          ./vendor/bin/sail artisan tinker --execute="print_r(config('database.connections.mysql'))"
+      # --- END: NEW DIAGNOSTIC STEPS ---
 
       - name: Run Migrations
         run: ./vendor/bin/sail artisan migrate
+
+      - name: Show MySQL Logs After Failure
+        if: always()
+        run: ./vendor/bin/sail logs mysql
 
       - name: Run Tests
         run: ./vendor/bin/sail artisan test
