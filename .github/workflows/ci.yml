@@ -55,11 +55,10 @@ jobs:
       - name: Wait for MySQL
         run: |
           echo "Waiting for MySQL to be ready..."
-          for i in {1..30}; do
-            # Run 'nc' (netcat) from the 'laravel.test' container
-            # to check if the 'mysql' host's port '3306' is open
-            if ./vendor/bin/sail exec laravel.test nc -z mysql 3306; then
-              echo "MySQL is ready!"
+          for i in {1..60}; do
+            # Use PHP to attempt a PDO connection from the 'laravel.test' container
+            if ./vendor/bin/sail exec laravel.test php -r "try { new PDO('mysql:host=mysql;port=3306', 'sail', 'password'); } catch (Exception \$e) { exit(1); }"; then
+              echo "MySQL is ready! (PDO connection successful)"
               break
             fi
             echo "Waiting for MySQL... (Attempt $i/30)"
@@ -69,6 +68,7 @@ jobs:
             echo "MySQL did not become ready after 60 seconds."
             exit 1
           fi
+
       # --- END: THIS IS THE CORRECTED STEP ---
 
       - name: Generate App Key
@@ -82,7 +82,7 @@ jobs:
 
       - name: Run Tests
         run: ./vendor/bin/sail artisan test
-        
+
   # Job 3: Build and Push Image to Docker Hub
   build-and-push:
     name: "Build and Push to Docker Hub"
