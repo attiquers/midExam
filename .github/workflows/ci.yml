@@ -1,0 +1,84 @@
+# .github/workflows/ci.yml
+name: Build, Test, and Push Docker Image
+
+on:
+  push:
+    branches: [ "main" ] # Runs on every push to the main branch
+
+jobs:
+  # Job 1: Run Linters (Optional, but good practice)
+  lint:
+    name: "Run Linter (Pint)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+      
+      - name: "Pint check placeholder"
+        run: echo "Skipping Pint, not installed. Add 'laravel/pint' to run."
+
+  # Job 2: Run Tests
+  test:
+    name: "Run Artisan Tests"
+    runs-on: ubuntu-latest
+    needs: lint # Waits for lint job to pass
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy .env
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        # We must use the same Docker method as in setup
+        run: docker run --rm -v $(pwd):/app -w /app laravelsail/php82-composer composer install
+
+      - name: Start Sail
+        run: ./vendor/bin/sail up -d
+
+      - name: Wait for MySQL
+        run: sleep 20 # Give the database time to start
+
+      - name: Generate App Key
+        run: ./vendor/bin/sail artisan key:generate
+
+      - name: Run Migrations
+        run: ./vendor/bin/sail artisan migrate
+
+      - name: Run Tests
+        run: ./vendor/bin/sail artisan test
+
+  # Job 3: Build and Push Image to Docker Hub
+  build-and-push:
+    name: "Build and Push to Docker Hub"
+    runs-on: ubuntu-latest
+    needs: test # Waits for test job to pass
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          # This is the path from the 'sail:publish' command
+          file: ./docker/8.2/Dockerfile 
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/todoapp:latest # Change 'todoapp' as needed
