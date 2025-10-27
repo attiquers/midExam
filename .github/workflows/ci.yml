@@ -64,27 +64,32 @@ jobs:
           done
           if [ $i -eq 30 ]; then
             echo "MySQL did not become ready after 60 seconds."
+            exit 1
           fi
-      
-      # --- START: ADD THIS NEW DIAGNOSTIC STEP ---
-      - name: Show MySQL container logs
-        # This will print the logs from the mysql container
-        # so we can see why it is crashing.
-        run: ./vendor/bin/sail logs mysql
-      # --- END: ADD THIS NEW DIAGNOSTIC STEP ---
 
       - name: Generate App Key
         run: ./vendor/bin/sail artisan key:generate
 
       - name: Clear Config Cache
         run: ./vendor/bin/sail artisan config:clear
+      
+      # --- START: ADD NEW DIAGNOSTIC STEP ---
+      - name: Check Container Status Before Migrate
+        run: ./vendor/bin/sail ps
+      # --- END: ADD NEW DIAGNOSTIC STEP ---
 
       - name: Run Migrations
         run: ./vendor/bin/sail artisan migrate
 
+      # --- START: ADD FINAL LOG DUMP (RUNS ON FAILURE) ---
+      - name: Show MySQL Logs After Failure
+        # This step will run even if 'Run Migrations' fails
+        if: always()
+        run: ./vendor/bin/sail logs mysql
+      # --- END: ADD FINAL LOG DUMP ---
+
       - name: Run Tests
         run: ./vendor/bin/sail artisan test
-
 
   # Job 3: Build and Push Image to Docker Hub
   build-and-push:
