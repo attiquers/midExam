@@ -96,15 +96,14 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKOPERHUB_USERNAME }} # Double-check your secret name
-          password: ${{ secrets.DOCKERHUB_TOKEN }}      # Double-check your secret name
+          username: ${{ secrets.DOCKERHUB_USERNAME }} # Make sure this secret exists
+          password: ${{ secrets.DOCKERHUB_TOKEN }}      # Make sure this secret exists
 
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          # Keep the context as the repository root
           context: . 
-          # Provide the full path to the Dockerfile from the root
           file: ./docker/8.2/Dockerfile 
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/todoapp:latest # Change 'todoapp' as needed
+
